@@ -25,25 +25,29 @@ def distanceInY(start, end):
     d = math.sqrt( 0 + ( ( end[1] - start[1] ) ** 2 ) )
     return d
 
-def sendCommandGrbl():
-    print "G01 X0Y0Z0"
-    print "G01 X"
-
 def moveGrblX(distance):
 
     if(distance != 0):
-        print "G01 X%.2f" % distance
+        # print "G01 X%.2f" % distance
+        return "G91 G0 X%.2f\n" % distance
+
+    return ""
 
 def moveGrblY(distance):
 
     if(distance != 0):
-        print "G01 Y%.2f" % distance
+        # print "G01 Y%.2f" % distance
+        return "G91 G0 Y%.2f\n" % distance
+    
+    return ""
 
 # Global var
 allXCoordinates = []
 allYCoordinates = []
 
 machinePosition = [0, 0, 0]
+
+commands = "G17 G20 G90 G94 G54\n"
 
 # all_layer_0_entities = [entity for entity in dwg.entities if entity.layer == '0']
 
@@ -66,7 +70,7 @@ for line in allLines:
 allPolyline = [entity for entity in dwg.entities if entity.dxftype == 'LWPOLYLINE']
 for polyline in allPolyline:
 
-    print "[INFO] Polyline X: %.2f Y: %.2f Z: %.2f\n" % (polyline.points[0], polyline.points[1], polyline.points[2])
+    # print "[INFO] Polyline X: %.2f Y: %.2f Z: %.2f\n" % (polyline.points[0], polyline.points[1], polyline.points[2])
 
     for point in polyline.points:
         allXCoordinates.append(point[0])
@@ -122,8 +126,8 @@ for circle in allCircles:
     machinePosition[2] = machinePosition[2] + dGrblZ
 
 
-    moveGrblX(dGrblX)
-    moveGrblY(dGrblY)
+    commands += moveGrblX(dGrblX)
+    commands += moveGrblY(dGrblY)
 
 
 # for e in all_layer_0_entities:
@@ -138,3 +142,5 @@ for circle in allCircles:
 
 print "[INFO]: Machine position\n"
 print "X: %.2f Y: %.2f Z: %.2f\n" % (machinePosition[0], machinePosition[1], machinePosition[2])
+
+print commands
