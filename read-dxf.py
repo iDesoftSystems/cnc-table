@@ -39,7 +39,7 @@ def moveGrblY(distance):
     if(distance != 0):
         print "G01 Y%.2f" % distance
 
-# Global var
+# Global vars
 allXCoordinates = []
 allYCoordinates = []
 
@@ -78,11 +78,6 @@ maxX = max(allXCoordinates)
 
 minY = min(allYCoordinates)
 maxY = max(allYCoordinates)
-
-# print "Min X: %f" % (minX)
-# print "Max X: %f" % (maxX)
-# print "Min Y: %f" % (minY)
-# print "Max Y: %f" % (maxY)
 
 initCoordinate = [minX, minY]
 endCoordinate = [maxX, maxY]
@@ -124,17 +119,6 @@ for circle in allCircles:
 
     moveGrblX(dGrblX)
     moveGrblY(dGrblY)
-
-
-# for e in all_layer_0_entities:
-#     # 2.7489
-#     if e.dxftype() == 'LINE':
-#         print("LINE on layer: %s\n" % e.dxf.layer)
-#         # print("start point: %s\n" % e.dxf.start)
-#         # print("end point: %s\n" % e.dxf.end)
-
-#     if e.dxftype() == 'CIRCLE':
-#         print "CIRCLE on layer: %s\n" % e.dxf.layer
 
 print "[INFO]: Machine position\n"
 print "X: %.2f Y: %.2f Z: %.2f\n" % (machinePosition[0], machinePosition[1], machinePosition[2])
