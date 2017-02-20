@@ -16,7 +16,7 @@ a.add_argument("-p", "--serialport", required=True,
     help="Serial Port name")
 
 a.add_argument("-c", "--commandfile", required=True,
-    help="Commands file")
+    help="Commands file (.nc)")
 
 args = vars(a.parse_args())
 
