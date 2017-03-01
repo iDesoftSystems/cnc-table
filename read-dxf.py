@@ -9,7 +9,7 @@ Read dxf file
 import math
 import dxfgrabber
 
-dwg = dxfgrabber.readfile("24KA-60mV-test.dxf")
+dwg = dxfgrabber.readfile("400Afc-only.dxf")
 print("DXF version: {}".format(dwg.dxfversion))
 
 def distanceBetwenTwoPoints(start, end):
