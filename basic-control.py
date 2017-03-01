@@ -51,6 +51,8 @@ for line in f:
     grbl_out = s.readline()
     print ' : ' + grbl_out.strip()
 
+    raw_input(" Press <Enter> to continue...")
+
 # wait here until grbl is finished to cose serial port and file.
 raw_input(" Press <Enter> to exit and disable grbl.")
 
