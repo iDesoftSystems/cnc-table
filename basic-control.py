@@ -1,5 +1,5 @@
 #!/usr/bin/env python
-"""\
+"""
 simple g-code streaming script for grbl
 """
 
