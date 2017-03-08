@@ -1,13 +1,15 @@
 #!/usr/bin/env python
-"""\
+"""
 Read dxf file
 """
 
-# usage:
+# usage: python read-dxf.py
 
 # import the necesary packages
 import math
 import dxfgrabber
+import numpy as np
+import cv2
 
 dwg = dxfgrabber.readfile("400Afc-only.dxf")
 print("DXF version: {}".format(dwg.dxfversion))
@@ -23,6 +25,8 @@ def distanceInX(start, end):
 
 def distanceInY(start, end):
     d = math.sqrt( 0 + ( ( end[1] - start[1] ) ** 2 ) )
+
+    d = d * -1
     return d
 
 def moveGrblX(distance):
@@ -87,10 +91,21 @@ initCoordinate = [minX, minY]
 endCoordinate = [maxX, maxY]
 
 try:
-    print "[INFO] X: %.2f Y: %.2f Z: %.2f" % (initCoordinate[0], initCoordinate[1], initCoordinate[2])
+    print "[INFO] X: %.2f Y: %.2f Z: %.2f" % (initCoordinate[0], 
+    initCoordinate[1], initCoordinate[2])
 except:
     print "[WARNING] Z coordinate not found"
 
+
+# Create a black image
+img = np.zeros((512,512,3), np.uint8)
+
+# Draw a diagonal blue line with thickness of 5 px
+cv2.rectangle(img, (int(initCoordinate[0]), int(initCoordinate[1])),
+              (int(endCoordinate[0]), int(endCoordinate[1])), (0, 255, 0), 1)
+cv2.circle(img, (0, 0), 5, (0, 0, 255), -1)
+cv2.imshow("CNC Table", img)
+cv2.waitKey(0)
 
 
 print "[INFO]: Moving to the center of the first hole\n"
@@ -121,10 +136,17 @@ for circle in allCircles:
     machinePosition[2] = machinePosition[2] + dGrblZ
 
 
-    commands += moveGrblX(dGrblX)
-    commands += moveGrblY(dGrblY)
+    # commands += moveGrblX(dGrblX)
+    # commands += moveGrblY(dGrblY)
+    print "[INFO]: Machine position\n"
+    print "X: %.2f Y: %.2f Z: %.2f\n" % (machinePosition[0], machinePosition[1], machinePosition[2])
+
+    cv2.circle(img, (int(circle.center[0]), int(circle.center[1])),
+               int(circle.radius), (0, 0, 255), -1)
+    cv2.imshow("CNC Table", img)
+    cv2.waitKey(0)
 
 print "[INFO]: Machine position\n"
 print "X: %.2f Y: %.2f Z: %.2f\n" % (machinePosition[0], machinePosition[1], machinePosition[2])
 
-print commands
+# print commands
