@@ -3,102 +3,123 @@
 Control after read dxf file
 """
 
-# usage: 
+# usage: python control-from-dxf.py -p /dev/cu.wchusbserial1420 -s config/config.nc -f 1a100mv.dxf -m M
 
 # import the necesary packages
 import math
 import dxfgrabber
+import argparse
 import serial
 import time
-import cv2
+# import cv2
 
-def distanceInX(start, end):
+def distance_in_x(start, end):
     """
+    Get distance in X from two points
 
     Args:
-        start Start point
-        end End point
+        start   Start point
+        end     End point
     """
-    d = math.sqrt( ( (end[0] - start[0] ) ** 2) + 0 )
-    return d
+    distance = math.sqrt(((end[0] - start[0]) ** 2) + 0)
+    return distance
 
-def distanceInY(start, end):
+def distance_in_y(start, end):
     """
+    Get distance in Y from two points
 
     Args:
+        start   Start point
+        end     End point
     """
-    d = math.sqrt( 0 + ( ( end[1] - start[1] ) ** 2 ) )
+    distance = math.sqrt(0 + ((end[1] - start[1]) ** 2))
 
-    # invertimos y para mundo real
-    d = d * -1
-    return d
+    # invertimos (Y) para mundo real
+    distance = distance * -1
+    return distance
 
-def moveGrblX(distance):
+def move_grbl_x(distance):
 
-    if(distance != 0):
+    """
+    Get string GRBL command for (X)
+
+    Args:
+        distance    Distance for (X) command
+    """
+    if distance != 0:
         # print "G01 X%.2f" % distance
         return "G91 G0 X%.2f\n" % distance
 
     return ""
 
-def moveGrblY(distance):
+def move_grbl_y(distance):
 
-    if(distance != 0):
+    """
+    Get string GRBL command for (Y)
+
+    Args:
+        distance        Distance for (Y) command
+    """
+
+    if distance != 0:
         # print "G01 Y%.2f" % distance
         return "G91 G0 Y%.2f\n" % distance
-    
+
     return ""
 
-def get_object_boundaries(dwg):
+def get_object_boundaries(dxf_content):
     """
 
     Args:
-        dwg Data from dxf file
+        dxf_content     Data from dxf file
     """
 
-    allXCoordinates = []
-    allYCoordinates = []
+    all_x_coordinates = []
+    all_y_coordinates = []
 
     # LINE
-    allLines = [entity for entity in dwg.entities if entity.dxftype == 'LINE']
-    for line in allLines:
+    all_lines = [entity for entity in dxf_content.entities if entity.dxftype == 'LINE']
+    for line in all_lines:
 
-        # print "[INFO] LINE.Start X: %.2f Y: %.2f Z: %.2f\n" % (line.start[0], line.start[1], line.start[2])
+        # print "[INFO] LINE.Start X: %.2f Y: %.2f Z: %.2f\n"
+        # % (line.start[0], line.start[1], line.start[2])
 
-        # print "[INFO] LINE.End X: %.2f Y: %.2f Z: %.2f\n" % (line.end[0], line.end[1], line.end[2])
+        # print "[INFO] LINE.End X: %.2f Y: %.2f Z: %.2f\n"
+        # % (line.end[0], line.end[1], line.end[2])
 
         # Add Xs
-        allXCoordinates.append(line.start[0])
-        allYCoordinates.append(line.start[1])
+        all_x_coordinates.append(line.start[0])
+        all_y_coordinates.append(line.start[1])
 
         # Add Ys
-        allXCoordinates.append(line.end[0])
-        allYCoordinates.append(line.end[1])
+        all_x_coordinates.append(line.end[0])
+        all_y_coordinates.append(line.end[1])
 
 
     # LWPOLYLINE
-    allPolyline = [entity for entity in dwg.entities if entity.dxftype == 'LWPOLYLINE']
-    for polyline in allPolyline:
+    all_polyline = [entity for entity in dxf_content.entities if entity.dxftype == 'LWPOLYLINE']
+    for polyline in all_polyline:
 
-        # print "[INFO] Polyline X: %.2f Y: %.2f Z: %.2f\n" % (polyline.points[0], polyline.points[1], polyline.points[2])
+        # print "[INFO] Polyline X: %.2f Y: %.2f Z: %.2f\n"
+        #  % (polyline.points[0], polyline.points[1], polyline.points[2])
 
         for point in polyline.points:
-            allXCoordinates.append(point[0])
-            allYCoordinates.append(point[1])
+            all_x_coordinates.append(point[0])
+            all_y_coordinates.append(point[1])
 
     # boundaries with min and max coordinates
-    minX = min(allXCoordinates)
-    maxX = max(allXCoordinates)
+    min_x = min(all_x_coordinates)
+    max_x = max(all_x_coordinates)
 
-    minY = min(allYCoordinates)
-    maxY = max(allYCoordinates)
+    min_y = min(all_y_coordinates)
+    max_y = max(all_y_coordinates)
 
-    initCoordinate = [minX, minY]
-    endCoordinate = [maxX, maxY]
+    init_coordinate = [min_x, min_y]
+    end_coordinate = [max_x, max_y]
 
-    return initCoordinate
+    return init_coordinate
 
-def set_sender_configuration(serialbus, path_senderconfig_file):
+def set_sender_configuration(output, path_senderconfig_file):
     """
     Send configuration file for CNC,
     this configuration depends on the RPM of each engine.
@@ -117,7 +138,7 @@ def set_sender_configuration(serialbus, path_senderconfig_file):
         # strip all EOL characters for streaming
         line = line.strip()
 
-        send_grblcode(line, serialbus)
+        send_grblcode(line, output)
 
     # close file and serial port
     sender_config_file.close()
@@ -130,82 +151,108 @@ def send_grblcode(command, output):
         command
         output
     """
-    print 'Set configuration: ' + command
+    print 'Sending GRBL: ' + command
 
     # send g-code block to grbl
-    serialbus.write(command + '\n')
+    output.write(command + '\n')
 
     # wait for grbl response with carriage return
-    grbl_out = serialbus.readline()
+    grbl_out = output.readline()
     print ' : ' + grbl_out.strip()
 
-
-def drilling(dwg, modelPosition, output):
+# ??????????? model position local and param?
+def drilling(dxf_content, model_position, output, mode_machine):
     """
 
     Args:
-        dwg
-        modelPosition
+        dxf_content
+        model_position
         output
+        mode_machine
     """
 
     # x, y, z (mm)
-    machinePosition = [0, 0, 0]
-    modelPosition = [0, 0, 0]
-    lastRadius = 0
+    machine_position = [0, 0, 0]
+    # FIX: Always reset to 0, 0, 0 coordinates in model position
+    model_position = [0, 0, 0]
+    last_radius = 0
 
-    allCircles = [entity for entity in dwg.entities if entity.dxftype == 'CIRCLE']
-    for circle in allCircles:
-        if(lastRadius != circle.radius):
-            print "[WARNING] Not match radius of %.2f to %.2f\n" % (lastRadius, circle.radius)
-            raw_input("Press <Enter> to continue...\n") 
+    all_circles = [entity for entity in dxf_content.entities if entity.dxftype == 'CIRCLE']
+    for circle in all_circles:
+        if last_radius != circle.radius:
+            print "[WARNING] Not match radius of %.2f to %.2f\n" % (last_radius, circle.radius)
+            raw_input("Press <Enter> to continue...\n")
 
-        print "Hole r: %.2f mm\n" % circle.radius
+        print "Hole Radius: %.2f mm\n" % circle.radius
 
-        lastRadius = circle.radius
+        last_radius = circle.radius
 
-        distanceX = distanceInX(modelPosition, circle.center)
-        distanceY = distanceInY(modelPosition, circle.center)
-        distanceZ = 0
+        distance_x = distance_in_x(model_position, circle.center)
+        distance_y = distance_in_y(model_position, circle.center)
+        distance_z = 0
 
         # Grbl distances
-        dGrblX = distanceX - machinePosition[0]
-        dGrblY = distanceY - machinePosition[1]
-        dGrblZ = distanceZ - machinePosition[2]
+        d_grbl_x = distance_x - machine_position[0]
+        d_grbl_y = distance_y - machine_position[1]
+        d_grbl_z = distance_z - machine_position[2]
 
         # Update machine position
-        machinePosition[0] = machinePosition[0] + dGrblX
-        machinePosition[1] = machinePosition[1] + dGrblY
-        machinePosition[2] = machinePosition[2] + dGrblZ
+        machine_position[0] = machine_position[0] + d_grbl_x
+        machine_position[1] = machine_position[1] + d_grbl_y
+        machine_position[2] = machine_position[2] + d_grbl_z
 
-        cmdY = "G91 G0 Y%.2f\n" % dGrblY
-        cmdX = "G91 G0 X%.2f\n" % dGrblX
+        cmd_x = "G91 G0 X%.2f\n" % d_grbl_x
+        cmd_y = "G91 G0 Y%.2f\n" % d_grbl_y
+        cmd_z = "G91 G0 Z%.2f\n" % d_grbl_z
 
-        send_grblcode(cmdX, output)
-        send_grblcode(cmdY, output)
+        send_grblcode(cmd_x, output)
+        send_grblcode(cmd_y, output)
+        send_grblcode(cmd_z, output)
 
         print "[INFO]: Machine position\n"
-        print "X: %.2f Y: %.2f Z: %.2f\n" % (machinePosition[0], machinePosition[1], machinePosition[2])
+        print "X: %.2f Y: %.2f Z: %.2f\n" % (
+            machine_position[0], machine_position[1], machine_position[2])
 
-        raw_input(" Press <Enter> to continue with next hole...")
+        if mode_machine == 'A':
+            time.sleep(12)
+        else:
+            time.sleep(2)
+            raw_input(" Press <Enter> to continue with next hole...")
 
-    return machinePosition
+    return machine_position
 
-def return_zero(machinePosition, output):
+def return_zero(machine_position, output):
+
+    """
+
+    Args:
+        machine_position
+        output
+    """
 
     print "[INFO] Return to zero\n"
 
-    machinePosition[0] = machinePosition[0] * -1
-    machinePosition[1] = machinePosition[1] * -1
-    machinePosition[2] = machinePosition[2] * -1
+    d_grbl_x = machine_position[0] * -1
+    d_grbl_y = machine_position[1] * -1
+    d_grbl_z = machine_position[2] * -1
 
-    cmdX = "G91 G0 X%.2f\n" % machinePosition[0]
-    cmdY = "G91 G0 Y%.2f\n" % machinePosition[1]
-    cmdZ = "G91 G0 Z%.2f\n" % machinePosition[2]
+    # Update machine position
+    machine_position[0] = machine_position[0] + d_grbl_x
+    machine_position[1] = machine_position[1] + d_grbl_y
+    machine_position[2] = machine_position[2] + d_grbl_z
 
-    send_grblcode(cmdX, output)
-    send_grblcode(cmdY, output)
-    send_grblcode(cmdZ, output)
+    cmd_x = "G91 G0 X%.2f\n" % d_grbl_x
+    cmd_y = "G91 G0 Y%.2f\n" % d_grbl_y
+    cmd_z = "G91 G0 Z%.2f\n" % d_grbl_z
+
+    send_grblcode(cmd_x, output)
+    send_grblcode(cmd_y, output)
+    send_grblcode(cmd_z, output)
+
+    print "[INFO]: Machine position\n"
+    print "X: %.2f Y: %.2f Z: %.2f\n" % (
+        machine_position[0], machine_position[1], machine_position[2])
+
 
 """
 Main application
@@ -221,6 +268,9 @@ a.add_argument("-s", "--sender", required=True,
 
 a.add_argument("-f", "--dxffile", required=True,
     help="Main model for drilling (.dxf)")
+
+a.add_argument("-m", "--mode", required=True,
+    help="Manual or Automatic Mode")
 
 args = vars(a.parse_args())
 
@@ -244,23 +294,26 @@ Start workin drilling
 """
 
 dwg = dxfgrabber.readfile(args["dxffile"])
-print("DXF version: {}".format(dwg.dxfversion))
+print "DXF version: {}".format(dwg.dxfversion)
 
-modelPosition = get_object_boundaries(dwg)
+model_position = get_object_boundaries(dwg)
 
 try:
-    print "[INFO] X: %.2f Y: %.2f Z: %.2f" % (modelPosition[0], modelPosition[1], modelPosition[2])
-except:
-    print "[WARNING] Z coordinate not found"
+    print "[INFO] X: %.2f Y: %.2f Z: %.2f\n" % (
+        model_position[0], model_position[1], model_position[2])
+except IndexError:
+    print "[INFO] X: %.2f Y: %.2f" % (model_position[0], model_position[1])
+    print "[WARNING] Z coordinate not found\n"
 
 print "[INFO] Moving to the center of the first hole\n"
 
-machinePosition = drilling(dwg, modelPosition, s)
+
+machine_position = drilling(dwg, model_position, s, args["mode"])
+
+return_zero(machine_position, s)
 
 # wait here until grbl is finished to cose serial port and file.
 raw_input(" Press <Enter> to exit and disable grbl.")
 
-return_zero(machinePosition, s)
-
-#close file and serial port
+#close serial port
 s.close()
