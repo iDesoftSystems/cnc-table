@@ -1,5 +1,5 @@
-$0=200.000 (x, step/mm)
-$1=200.000 (y, step/mm)
+$0=199.000 (x, step/mm)
+$1=199.000 (y, step/mm)
 $2=200.000 (z, step/mm)
 $3=10.000 (step pulse, usec)
 $4=200.000 (default feed, mm/min)
