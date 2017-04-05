@@ -214,7 +214,7 @@ def drilling(dxf_content, model_position, output, mode_machine):
             machine_position[0], machine_position[1], machine_position[2])
 
         if mode_machine == 'A':
-            time.sleep(12)
+            time.sleep(9)
         else:
             time.sleep(2)
             raw_input(" Press <Enter> to continue with next hole...")
