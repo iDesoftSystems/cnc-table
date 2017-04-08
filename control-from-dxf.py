@@ -6,6 +6,7 @@ Control after read dxf file
 # usage: python control-from-dxf.py -p /dev/cu.wchusbserial1420 -s config/config.nc -f 1a100mv.dxf -m M
 
 # import the necesary packages
+import sys
 import math
 import dxfgrabber
 import argparse
@@ -160,7 +161,6 @@ def send_grblcode(command, output):
     grbl_out = output.readline()
     print ' : ' + grbl_out.strip()
 
-# ??????????? model position local and param?
 def drilling(dxf_content, model_position, output, mode_machine):
     """
 
@@ -173,12 +173,13 @@ def drilling(dxf_content, model_position, output, mode_machine):
 
     # x, y, z (mm)
     machine_position = [0, 0, 0]
-    # FIX: Always reset to 0, 0, 0 coordinates in model position
-    model_position = [0, 0, 0]
     last_radius = 0
 
     all_circles = [entity for entity in dxf_content.entities if entity.dxftype == 'CIRCLE']
     for circle in all_circles:
+
+        print "[INFO] Moving to the center of the first hole\n"
+
         if last_radius != circle.radius:
             print "[WARNING] Not match radius of %.2f to %.2f\n" % (last_radius, circle.radius)
             raw_input("Press <Enter> to continue...\n")
@@ -305,12 +306,16 @@ except IndexError:
     print "[INFO] X: %.2f Y: %.2f" % (model_position[0], model_position[1])
     print "[WARNING] Z coordinate not found\n"
 
-print "[INFO] Moving to the center of the first hole\n"
+while True:
 
+    last_machine_position = drilling(dwg, model_position, s, args["mode"])
 
-machine_position = drilling(dwg, model_position, s, args["mode"])
+    return_zero(last_machine_position, s)
 
-return_zero(machine_position, s)
+    op_continue = int(raw_input("\nContinue?"))
+
+    if op_continue <= 0:
+        break
 
 # wait here until grbl is finished to cose serial port and file.
 raw_input(" Press <Enter> to exit and disable grbl.")
