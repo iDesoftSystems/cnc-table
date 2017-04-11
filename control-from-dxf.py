@@ -6,6 +6,7 @@ Control after read dxf file
 # usage: python control-from-dxf.py -p /dev/cu.wchusbserial1420 -s config/config.nc -f 1a100mv.dxf -m M
 
 # import the necesary packages
+import sys
 import math
 import dxfgrabber
 import argparse
@@ -38,6 +39,17 @@ def distance_in_y(start, end):
     distance = distance * -1
     return distance
 
+def get_distance(start, end):
+    """
+    Get distance from two points
+
+    Args:
+        start   Start point
+        end     End point
+    """
+    distance = math.sqrt(((end[0] - start[0]) ** 2) + ((end[1] - start[1]) ** 2))
+    return distance
+
 def move_grbl_x(distance):
 
     """
@@ -67,7 +79,40 @@ def move_grbl_y(distance):
 
     return ""
 
-def get_object_boundaries(dxf_content):
+def get_holes(dxf_content, initial_position):
+    """
+
+    Args:
+        dxf_content     Data from dxf file
+    """
+
+    hole_list_temp = []
+    all_circles = [entity for entity in dxf_content.entities if entity.dxftype == 'CIRCLE']
+    for circle in all_circles:
+        hole = []
+        hole.append(circle.center[0])
+        hole.append(circle.center[1])
+        hole.append(circle.center[2])
+        hole.append(circle.radius)
+
+        tmp_distance = get_distance(initial_position, circle.center)
+        hole.append(tmp_distance)
+
+        hole_list_temp.append(hole)
+
+    return hole_list_temp
+
+def get_key_for_order(item):
+    """
+    Get distance for order holes
+
+    Args:
+        item    Item for order
+    """
+
+    return item[4]
+
+def get_init_position(dxf_content):
     """
 
     Args:
@@ -160,38 +205,33 @@ def send_grblcode(command, output):
     grbl_out = output.readline()
     print ' : ' + grbl_out.strip()
 
-# ??????????? model position local and param?
-def drilling(dxf_content, model_position, output, mode_machine):
+def drilling(hole_list, model_position, machine_position, output, mode_machine):
     """
-
+    Send position from hole to CNC 
+    
     Args:
-        dxf_content
+        hole_list
         model_position
+        machine_position
         output
         mode_machine
     """
-
-    # x, y, z (mm)
-    machine_position = [0, 0, 0]
-    # FIX: Always reset to 0, 0, 0 coordinates in model position
-    model_position = [0, 0, 0]
     last_radius = 0
 
-    all_circles = [entity for entity in dxf_content.entities if entity.dxftype == 'CIRCLE']
-    for circle in all_circles:
-        if last_radius != circle.radius:
-            print "[WARNING] Not match radius of %.2f to %.2f\n" % (last_radius, circle.radius)
-            raw_input("Press <Enter> to continue...\n")
+    for hole in hole_list:
 
-        print "Hole Radius: %.2f mm\n" % circle.radius
+        if last_radius != hole[3]:
+            print "[WARNING] Not match radius of %.2f to %.2f\n" % (last_radius, hole[3])
+            raw_input("Press <Enter> to continue...")
 
-        last_radius = circle.radius
+        print "Hole radius: %.2f mm\n" % hole[3]
+        last_radius = hole[3]
 
-        distance_x = distance_in_x(model_position, circle.center)
-        distance_y = distance_in_y(model_position, circle.center)
+        distance_x = distance_in_x(model_position, hole)
+        distance_y = distance_in_y(model_position, hole)
         distance_z = 0
 
-        # Grbl distances
+        # GRBL distances
         d_grbl_x = distance_x - machine_position[0]
         d_grbl_y = distance_y - machine_position[1]
         d_grbl_z = distance_z - machine_position[2]
@@ -209,8 +249,7 @@ def drilling(dxf_content, model_position, output, mode_machine):
         send_grblcode(cmd_y, output)
         send_grblcode(cmd_z, output)
 
-        print "[INFO]: Machine position\n"
-        print "X: %.2f Y: %.2f Z: %.2f\n" % (
+        print "[INFO]: Machine position X: %.2f Y: %.2f Z: %.2f\n" % (
             machine_position[0], machine_position[1], machine_position[2])
 
         if mode_machine == 'A':
@@ -289,28 +328,53 @@ s.flushInput()
 #
 set_sender_configuration(s, args["sender"])
 
-"""
-Start workin drilling
-"""
+#
+# Starts the capture of holes
+#
 
 dwg = dxfgrabber.readfile(args["dxffile"])
 print "DXF version: {}".format(dwg.dxfversion)
 
-model_position = get_object_boundaries(dwg)
+model_init_position = get_init_position(dwg)
+
+machine_position = [0, 0, 0]
 
 try:
     print "[INFO] X: %.2f Y: %.2f Z: %.2f\n" % (
-        model_position[0], model_position[1], model_position[2])
+        model_init_position[0], model_init_position[1], model_init_position[2])
 except IndexError:
-    print "[INFO] X: %.2f Y: %.2f" % (model_position[0], model_position[1])
+    print "[INFO] X: %.2f Y: %.2f" % (model_init_position[0], model_init_position[1])
     print "[WARNING] Z coordinate not found\n"
 
-print "[INFO] Moving to the center of the first hole\n"
+
+#
+# Drilling work begins
+#
+
+hole_list = sorted(get_holes(dwg, model_init_position), key=get_key_for_order)
+
+while True:
+
+    print "[INFO]: Machine position X: %.2f Y: %.2f Z: %.2f\n" % (
+        machine_position[0], machine_position[1], machine_position[2])
+
+    machine_position = drilling(hole_list, model_init_position, machine_position, s, args["mode"])
+
+    print "\nOptions\n"
+    print "1) Continue from last position"
+    print "2) Continue from initial position"
+    print "3) Finalize"
+    option = 4
 
 
-machine_position = drilling(dwg, model_position, s, args["mode"])
+    option = int(raw_input('\nOption? : '))
 
-return_zero(machine_position, s)
+    if option == 1:
+        hole_list = sorted(get_holes(dwg, machine_position), key=get_key_for_order)
+
+    elif option >= 3:
+        return_zero(machine_position, s)
+        break
 
 # wait here until grbl is finished to cose serial port and file.
 raw_input(" Press <Enter> to exit and disable grbl.")
