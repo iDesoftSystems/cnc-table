@@ -16,3 +16,4 @@ Its allos to locate with high precision in the points of a plane to be able to p
 * dxfgrabber
 * open cv
 * numpy
+* PIL

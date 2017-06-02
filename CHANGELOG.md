@@ -1,3 +1,9 @@
+# 1.3.0-rc.0 (2 Jun 2017)
+
+### Features
+
+* Optimizes the best route to drill all the holes with TSP Algorithm
+
 # 1.2 (11 Apr 2017)
 
 ### Features
