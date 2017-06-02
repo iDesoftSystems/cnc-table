@@ -17,16 +17,26 @@ import sys
 import time
 from tsp import tsp
 
-def port_is_usable(portName):
+def port_is_usable(port_name):
+    """
+    Check if port is usable
+
+    Args:
+        port_name
+    """
+
     try:
-        ser = serial.Serial(port=portName)
+        serial.Serial(port=port_name)
         return True
-    except:
+    except IOError:
         return False
 
 def valid_int(number):
     """
     Valid integer from string
+
+    Args:
+        number
     """
     try:
         int(number)
@@ -94,6 +104,15 @@ def return_zero(machine_position, channel):
 
 def drilling(holes, tour, base_position, machine_position, channel, mode):
     """
+    Drilling holes handler
+
+    Args:
+        holes List the coordinates
+        tour Best tour for drilling
+        base_position Coordinates from last position
+        machine_position Coordinates from machine
+        channel Ouput channel with device
+        mode Automatic or manual mode
     """
 
     for index in tour:
@@ -205,7 +224,7 @@ def get_base_position(dxf_content):
 
     return init_coordinate
 
-def set_sender_configuration(chanel, path_sender_file):
+def set_sender_configuration(channel, path_sender_file):
     """
     Send configuration file for CNC,
     this configuration depends on the RPM of each engine.
@@ -224,46 +243,46 @@ def set_sender_configuration(chanel, path_sender_file):
         # strip all EOL characters for streaming
         line = line.strip()
 
-        send_grblcode(line, chanel)
+        send_grblcode(line, channel)
 
     # close file and serial port
     sender_config_file.close()
 
-def send_grblcode(command, chanel):
+def send_grblcode(command, channel):
     """
     Send grbl code to CNC
 
     Args
         command
-        chanel
+        channel
     """
     print 'Sending GRBL: ' + command
 
     # send g-code block to grbl
-    # chanel.write(command + '\n')
+    channel.write(command + '\n')
 
     # wait for grbl response with carriage return
-    # grbl_out = chanel.readline()
-    # print ' : ' + grbl_out.strip()
+    grbl_out = channel.readline()
+    print ' : ' + grbl_out.strip()
 
-def initialize_grbl(chanel, path_config_file):
+def initialize_grbl(channel, path_config_file):
     """
     Initialize GRBL
 
     Args:
-        chanel I/O Device or port
+        channel I/O Device or port
     """
 
     # wake up grbl
-    chanel.grite("\r\n\r\n")
+    channel.write("\r\n\r\n")
 
     # waint for grbl to initialize
     time.sleep(2)
 
     # flush startup text in serial input
-    chanel.flushInput()
+    channel.flushInput()
 
-    set_sender_configuration(chanel, path_config_file)
+    set_sender_configuration(channel, path_config_file)
 
 
 def main():
@@ -271,7 +290,7 @@ def main():
     Main Application
     """
 
-    output_chanel = None
+    output_channel = None
     base_position = [0, 0, 0]
     machine_position = None
     mode = "M"
@@ -283,7 +302,7 @@ def main():
     args.add_argument("-s", "--sender", required=True,
                       help="Sender configuration file (.nc)")
 
-    args.add_argument("-f", "--dxfile", required=True,
+    args.add_argument("-f", "--dxffile", required=True,
                       help="Model for drilling (.dxf)")
 
     args.add_argument("-m", "--mode", required=True,
@@ -293,12 +312,13 @@ def main():
 
     try:
         # open grbl serial port
-        output_chanel = serial.Serial(args["serialport"], 9600)
+        output_channel = serial.Serial(args["serialport"], 9600)
 
-        initialize_grbl(output_chanel, args['sender'])
+        initialize_grbl(output_channel, args['sender'])
 
     except IOError:
-        print "Error"
+        print "[ERROR]: Not usable serial port"
+        sys.exit(1)
 
     try:
         dxf_content = dxfgrabber.readfile(args['dxffile'])
@@ -324,7 +344,7 @@ def main():
             machine_position[0], machine_position[1], machine_position[2])
 
         machine_position = drilling(all_holes, best_tour, base_position,
-                                    machine_position, output_chanel, mode)
+                                    machine_position, output_channel, mode)
 
         print "\nOptions\n"
         print "1) Continue from last position"
@@ -336,17 +356,17 @@ def main():
             if option == 1:
                 best_tour = tsp.main("tour.png", 10000, "reversed_sections", all_holes)
             elif option >= 2:
-                return_zero(machine_position, output_chanel)
+                return_zero(machine_position, output_channel)
                 break
         else:
-            return_zero(machine_position, output_chanel)
+            return_zero(machine_position, output_channel)
             break
 
     # wait here until grbl is finished to cose serial port and file.
     raw_input(" Press <Enter> to exit and disable grbl.")
 
     #close serial port
-    output_chanel.close()
+    output_channel.close()
 
 if __name__ == "__main__":
     main()
