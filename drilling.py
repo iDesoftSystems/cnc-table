@@ -115,6 +115,8 @@ def drilling(holes, tour, base_position, machine_position, channel, mode):
         mode Automatic or manual mode
     """
 
+    raw_input("Press <Enter> to start drilling...")
+
     for index in tour:
         hole = holes[index]
 
@@ -140,7 +142,7 @@ def drilling(holes, tour, base_position, machine_position, channel, mode):
         send_grblcode(cmd_y, channel)
         send_grblcode(cmd_z, channel)
 
-        print "Hole {} {}\n".format(index, hole)
+        print "\n[INFO]: Hole {} {}\n".format(index, hole)
         print "[INFO]: Machine position X: %.2f Y: %.2f Z: %.2f\n" % (
             machine_position[0], machine_position[1], machine_position[2])
 
@@ -149,7 +151,6 @@ def drilling(holes, tour, base_position, machine_position, channel, mode):
         else:
             time.sleep(2)
             raw_input(" Press <Enter> to continue with next hole...")
-
 
     return machine_position
 
@@ -337,9 +338,10 @@ def main():
     all_holes = []
     all_holes = get_holes(dxf_content)
 
-    best_tour = tsp.main("tour.png", 10000, "reversed_sections", all_holes)
 
     while True:
+        best_tour = tsp.main("tour.png", 10000, "reversed_sections", all_holes)
+
         print "[INFO]: Machine Position X: %.2f Y: %.2f Z: %.2f\n" % (
             machine_position[0], machine_position[1], machine_position[2])
 
@@ -352,9 +354,12 @@ def main():
         option = 3
 
         option = raw_input('\nOption?: ')
+
         if valid_int(option):
+            option = int(option)
+
             if option == 1:
-                best_tour = tsp.main("tour.png", 10000, "reversed_sections", all_holes)
+                print "[INFO]: Return to start drilling"
             elif option >= 2:
                 return_zero(machine_position, output_channel)
                 break
