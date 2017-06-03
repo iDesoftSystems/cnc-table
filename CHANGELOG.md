@@ -1,3 +1,12 @@
+# 1.3.0-rc.1 (3 Jun 2017)
+
+### Features
+
+* More fast movement x, y, z
+
+### Bug fixes
+* Machine position in drilling
+
 # 1.3.0-rc.0 (2 Jun 2017)
 
 ### Features
